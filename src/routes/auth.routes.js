@@ -127,20 +127,30 @@ router.post("/signup", async (req, res) => {
 // GET CURRENT USER PROFILE
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    // req.user is expected to be injected by JWT middleware
-    const user = req.user;
-
-    if (!user) {
+    if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    res.json({
+    // fetch full user from DB to include name
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, email, role, name")
+      .eq("id", req.user.id)
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json({
       id: user.id,
       email: user.email,
       role: user.role,
+      name: user.name,
     });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch user profile" });
+    console.log(err);
+    return res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
 
