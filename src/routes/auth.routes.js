@@ -134,7 +134,7 @@ router.get("/me", requireAuth, async (req, res) => {
     // fetch full user from DB to include name
     const { data: user, error } = await supabase
       .from("users")
-      .select("id, email, role, name")
+      .select("id, email, role, name, address, phone")
       .eq("id", req.user.id)
       .single();
 
@@ -147,6 +147,8 @@ router.get("/me", requireAuth, async (req, res) => {
       email: user.email,
       role: user.role,
       name: user.name,
+      address: user.address,
+      phone: user.phone,
     });
   } catch (err) {
     console.log(err);
