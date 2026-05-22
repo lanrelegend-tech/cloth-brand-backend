@@ -167,7 +167,7 @@ router.patch("/me", requireAuth, async (req, res) => {
     const { data, error } = await supabase
       .from("users")
       .update(updates)
-      .eq("email", req.user.email)
+      .eq("id", req.user.id)
       .select()
       .single();
 
@@ -181,6 +181,38 @@ router.patch("/me", requireAuth, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// UPDATE USER PROFILE (FRONTEND: /auth/profile)
+router.put("/profile", requireAuth, async (req, res) => {
+  try {
+    const { name, address, phone } = req.body;
+
+    const updates = {};
+
+    if (name) updates.name = name;
+    if (address) updates.address = address;
+    if (phone) updates.phone = phone;
+
+    const { data, error } = await supabase
+      .from("users")
+      .update(updates)
+      .eq("id", req.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({
+      message: "Profile updated successfully",
+      user: data,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
