@@ -2,6 +2,10 @@ import express from "express";
 import { loginAdmin } from "../services/auth.service.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { supabase } from "../config/supabase.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
+import { sendWelcomeEmail } from "../utils/email.js";
 
 const router = express.Router();
 
@@ -16,6 +20,74 @@ router.post("/login", async (req, res) => {
   }
 
   res.json({ token });
+});
+
+// USER SIGNUP
+router.post("/signup", async (req, res) => {
+  const { email, password, name } = req.body;
+
+  try {
+    // check if user exists
+    const { data: existing } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (existing) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // create user object
+    const newUser = {
+      id: uuidv4(),
+      email,
+      name,
+      password: hashedPassword,
+      role: "customer",
+      created_at: new Date(),
+    };
+
+    // insert into DB
+    const { data, error } = await supabase
+      .from("users")
+      .insert([newUser])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    // generate token
+    const token = jwt.sign(
+      {
+        id: data.id,
+        email: data.email,
+        role: data.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    await sendWelcomeEmail(data.email, data.name);
+
+    return res.json({
+      user: {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+      },
+      token,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Signup failed" });
+  }
 });
 
 // GET CURRENT USER PROFILE
