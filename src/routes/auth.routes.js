@@ -1,5 +1,4 @@
 import express from "express";
-import { loginAdmin } from "../services/auth.service.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { supabase } from "../config/supabase.js";
 import bcrypt from "bcryptjs";
@@ -9,17 +8,52 @@ import { sendWelcomeEmail } from "../utils/email.js";
 
 const router = express.Router();
 
-// ADMIN LOGIN
+// USER + ADMIN LOGIN
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const token = await loginAdmin(email, password);
+  try {
+    // 1. find user in DB
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
 
-  if (!token) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    if (error || !user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // 2. compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // 3. generate JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Login failed" });
   }
-
-  res.json({ token });
 });
 
 // USER SIGNUP
