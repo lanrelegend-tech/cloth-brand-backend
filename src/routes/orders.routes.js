@@ -41,13 +41,16 @@ router.post("/", requireAuth, async (req, res) => {
     .select()
     .single();
 
-  console.log("ORDER CREATED:", data);
+  if (error) {
+    console.log("❌ SUPABASE ERROR:", error);
+    return res.status(400).json({ error: error.message });
+  }
 
-  if (error) return res.status(400).json({ error });
+  console.log("ORDER CREATED:", data);
 
   // 📧 SEND ORDER CONFIRMATION EMAIL
   try {
-    const order = data;
+    const order = data || {};
 
     if (!order?.email) {
       console.log("EMAIL SKIPPED: missing email", order);
@@ -69,7 +72,7 @@ router.post("/", requireAuth, async (req, res) => {
 
   res.json({
     success: true,
-    order,
+    order: data,
   });
 });
 
