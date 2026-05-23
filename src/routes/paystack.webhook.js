@@ -11,9 +11,11 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   const secret = process.env.PAYSTACK_SECRET_KEY;
 
+  const payload = JSON.stringify(req.body);
+
   const hash = crypto
     .createHmac("sha512", secret)
-    .update(JSON.stringify(req.body))
+    .update(payload)
     .digest("hex");
 
   const signature = req.headers["x-paystack-signature"];
@@ -26,15 +28,20 @@ router.post("/", async (req, res) => {
   const event = req.body;
 
   if (event.event === "charge.success") {
-    const orderId = event.data.metadata.orderId;
+    const orderId =
+      event.data?.metadata?.orderId || event.data?.reference;
 
     // update order + fetch order data
-    const { data: order } = await supabase
+    const { data: order, error } = await supabase
       .from("orders")
       .update({ status: "paid" })
-      .eq("id", orderId)
+      .or(`id.eq.${orderId},payment_ref.eq.${orderId}`)
       .select()
       .single();
+
+    if (error || !order) {
+      console.log("Order not found for webhook:", orderId);
+    }
 
     // 📧 send email via service
     try {

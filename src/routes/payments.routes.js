@@ -41,4 +41,27 @@ router.post("/crypto", async (req, res) => {
   res.json(payment);
 });
 
+//
+// 🧾 CREATE ORDER
+//
+router.post("/orders", async (req, res) => {
+  try {
+    const payload = req.body;
+
+    const { data, error } = await supabase
+      .from("orders")
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

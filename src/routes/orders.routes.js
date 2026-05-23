@@ -9,7 +9,7 @@ const router = express.Router();
 //
 // CREATE ORDER (public)
 //
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", async (req, res) => {
   const {
     name,
     email,
@@ -38,7 +38,7 @@ router.post("/", requireAuth, async (req, res) => {
         payment_ref,
         status: status || "pending",
         delivery_status: "processing",
-        user_id: req.user?.id,
+        user_id: (req.user && req.user.id) || null,
       },
     ])
     .select();
