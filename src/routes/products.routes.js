@@ -58,8 +58,49 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       sku: req.body.sku || "",
       stock: Number(req.body.stock || 0),
 
-      size: req.body.size ? JSON.parse(req.body.size) : [],
-      color: req.body.color ? JSON.parse(req.body.color) : [],
+      size: (() => {
+        if (!req.body.size) return [];
+
+        // already array
+        if (Array.isArray(req.body.size)) return req.body.size;
+
+        // try JSON first
+        if (typeof req.body.size === "string") {
+          try {
+            const parsed = JSON.parse(req.body.size);
+            if (Array.isArray(parsed)) return parsed;
+          } catch (e) {}
+
+          // fallback: comma-separated string
+          return req.body.size
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean);
+        }
+
+        return [];
+      })(),
+
+      color: (() => {
+        if (!req.body.color) return [];
+
+        if (Array.isArray(req.body.color)) return req.body.color;
+
+        if (typeof req.body.color === "string") {
+          try {
+            const parsed = JSON.parse(req.body.color);
+            if (Array.isArray(parsed)) return parsed;
+          } catch (e) {}
+
+          return req.body.color
+            .split(",")
+            .map(c => c.trim())
+            .filter(Boolean);
+        }
+
+        return [];
+      })(),
+
       images: imageUrls || [],
     };
 
