@@ -27,18 +27,20 @@ router.post("/", async (req, res) => {
     .from("orders")
     .insert([
       {
-        customer_name: name,
+        name,
         email,
         phone,
         address,
         items,
-        total_price: total,
-        shipping_fee: shipping,
-        grand_total: grandTotal,
+
+        total,
+        shipping,
         payment_ref,
+
         status: status || "pending",
         delivery_status: "processing",
-        user_id: (req.user && req.user.id) || null,
+
+        user_id: req.user?.id || null,
       },
     ])
     .select();
