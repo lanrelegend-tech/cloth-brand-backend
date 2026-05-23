@@ -112,9 +112,9 @@ router.get("/:id", requireAdmin, async (req, res) => {
 });
 
 //
-// GET ALL ORDERS (admin only)
+// GET ALL ORDERS (auth only)
 //
-router.get("/", requireAdmin, async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("orders")
     .select("*")
