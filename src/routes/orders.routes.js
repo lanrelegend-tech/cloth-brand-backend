@@ -2,7 +2,6 @@ import express from "express";
 import { supabase } from "../config/supabase.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { calculateShipping } from "../services/shipping.service.js";
-import { sendEmail } from "../services/email.service.js";
 
 const router = express.Router();
 
@@ -45,6 +44,22 @@ router.post("/", requireAuth, async (req, res) => {
     .select();
 
   if (error) return res.status(400).json({ error });
+
+  // 📧 SEND ORDER CONFIRMATION EMAIL (handled by sendOrderMail service)
+  try {
+    const order = data?.[0];
+
+    if (order) {
+      const { sendOrderMail } = await import("../services/sendOrderMail.js");
+
+      await sendOrderMail({
+        type: "order_created",
+        order,
+      });
+    }
+  } catch (err) {
+    console.log("Order email failed:", err.message);
+  }
 
   res.json(data);
 });
@@ -117,38 +132,17 @@ router.patch("/:id", requireAdmin, async (req, res) => {
 
   if (error) return res.status(400).json({ error });
 
-  // 📧 EMAIL NOTIFICATIONS
+  // 📧 EMAIL NOTIFICATIONS (handled by sendOrderMail service)
   try {
-    if (data?.email) {
-      let subject = "";
-      let message = "";
+    if (data) {
+      const { sendOrderMail } = await import("../services/sendOrderMail.js");
 
-      if (status === "processing") {
-        subject = "Order Processing 🟡";
-        message = "Your order is now being processed.";
-      }
-
-      if (status === "shipped") {
-        subject = "Order Shipped 🚚";
-        message = `Your order has been shipped. Tracking: ${tracking_number || "N/A"}`;
-      }
-
-      if (status === "delivered") {
-        subject = "Order Delivered 📦";
-        message = "Your order has been delivered successfully.";
-      }
-
-      if (subject) {
-        await sendEmail({
-          to: data.email,
-          subject,
-          html: `
-            <h2>${subject}</h2>
-            <p>${message}</p>
-            <p><b>Order ID:</b> ${data.id}</p>
-          `,
-        });
-      }
+      await sendOrderMail({
+        type: "order_status_update",
+        order: data,
+        status,
+        tracking_number,
+      });
     }
   } catch (err) {
     console.log("Email failed:", err.message);
