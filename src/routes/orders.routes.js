@@ -18,7 +18,6 @@ router.post("/", requireAuth, async (req, res) => {
     items,
     total,
     shipping,
-    grandTotal,
     payment_ref,
     status,
   } = req.body;
@@ -33,9 +32,8 @@ router.post("/", requireAuth, async (req, res) => {
         address,
         items,
 
-        total: total || grandTotal,
+        total: total || 0,
         shipping: shipping || 0,
-        grand_total: grandTotal || total,
         payment_ref,
 
         status: status || "pending",
