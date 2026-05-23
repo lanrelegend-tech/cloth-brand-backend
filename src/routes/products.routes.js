@@ -44,7 +44,7 @@ router.post("/", upload.array("images", 5), async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const url = await uploadImage(file);
+        const url = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
         imageUrls.push(url);
       }
     }
@@ -132,7 +132,7 @@ router.post("/upload", upload.single("image"), async (req, res) => {
 
   try {
     return res.json({
-      url: req.file.path || req.file.location || req.file.filename,
+      url: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
     });
   } catch (err) {
     console.error(err);

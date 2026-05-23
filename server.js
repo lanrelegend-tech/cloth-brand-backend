@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
@@ -17,7 +18,15 @@ console.log("✅ productsRoutes imported:", typeof productsRoutes);
 dotenv.config();
 
 const app = express();
-app.use("/uploads", express.static("uploads"));
+const uploadDir = process.env.NODE_ENV === "production"
+  ? "/tmp/uploads"
+  : path.join(process.cwd(), "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+app.use("/uploads", express.static(uploadDir));
 const PORT = process.env.PORT || 3001;
 
 // app.use(helmet());
