@@ -21,27 +21,25 @@ router.post("/", requireAuth, async (req, res) => {
     status,
   } = req.body;
 
+  const orderPayload = {
+    name,
+    email,
+    phone,
+    address,
+    items,
+    total: total || 0,
+    shipping: shipping || 0,
+    payment_ref,
+    status: status || "pending",
+    delivery_status: "processing",
+    user_id: req.user.id,
+  };
+
   const { data, error } = await supabase
     .from("orders")
-    .insert([
-      {
-        name,
-        email,
-        phone,
-        address,
-        items,
-
-        total: total || 0,
-        shipping: shipping || 0,
-        payment_ref,
-
-        status: status || "pending",
-        delivery_status: "processing",
-
-        user_id: req.user.id,
-      },
-    ])
-    .select();
+    .insert([orderPayload])
+    .select()
+    .single();
 
   console.log("ORDER CREATED:", data);
 
@@ -49,12 +47,10 @@ router.post("/", requireAuth, async (req, res) => {
 
   // 📧 SEND ORDER CONFIRMATION EMAIL
   try {
-    const order = data?.[0];
+    const order = data;
 
-    if (!order) {
-      console.log("EMAIL SKIPPED: no order returned from insert");
-    } else if (!order.email) {
-      console.log("EMAIL SKIPPED: order missing email", order);
+    if (!order?.email) {
+      console.log("EMAIL SKIPPED: missing email", order);
     } else {
       const { sendOrderMail } = await import("../util/sendOrderMail.js");
 
@@ -71,7 +67,10 @@ router.post("/", requireAuth, async (req, res) => {
     console.log("Order email failed:", err?.message || err);
   }
 
-  res.json(data);
+  res.json({
+    success: true,
+    order,
+  });
 });
 
 //
