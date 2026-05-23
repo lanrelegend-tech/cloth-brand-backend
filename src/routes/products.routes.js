@@ -1,7 +1,6 @@
 import express from "express";
 import { supabase } from "../config/supabase.js";
 import { upload } from "../middleware/upload.middleware.js";
-import { uploadImage } from "../services/upload.service.js";
 
 const router = express.Router();
 
@@ -127,20 +126,17 @@ router.post("/", upload.array("images", 5), async (req, res) => {
 // UPLOAD SINGLE IMAGE
 //
 router.post("/upload", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    const url = await uploadImage(req.file);
-
     return res.json({
-      url,
+      url: req.file.path || req.file.location || req.file.filename,
     });
   } catch (err) {
-    return res.status(500).json({
-      error: err.message,
-    });
+    console.error(err);
+    return res.status(500).json({ error: "Upload failed" });
   }
 });
 

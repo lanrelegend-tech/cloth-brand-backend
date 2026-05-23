@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
@@ -16,6 +17,7 @@ console.log("✅ productsRoutes imported:", typeof productsRoutes);
 dotenv.config();
 
 const app = express();
+app.use("/uploads", express.static("uploads"));
 const PORT = process.env.PORT || 3001;
 
 // app.use(helmet());
