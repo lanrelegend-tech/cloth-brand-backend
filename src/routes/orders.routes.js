@@ -9,7 +9,7 @@ const router = express.Router();
 //
 // CREATE ORDER (public)
 //
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const {
     name,
     email,
@@ -33,14 +33,15 @@ router.post("/", async (req, res) => {
         address,
         items,
 
-        total,
-        shipping,
+        total: total || grandTotal,
+        shipping: shipping || 0,
+        grand_total: grandTotal || total,
         payment_ref,
 
         status: status || "pending",
         delivery_status: "processing",
 
-        user_id: req.user?.id || null,
+        user_id: req.user.id,
       },
     ])
     .select();
