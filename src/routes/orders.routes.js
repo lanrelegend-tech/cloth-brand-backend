@@ -54,15 +54,20 @@ router.post("/", requireAuth, async (req, res) => {
 //
 // GET LOGGED-IN USER ORDERS
 //
-router.get("/my-orders", requireAuth, async (req, res) => {
+router.get("/my", requireAuth, async (req, res) => {
+  console.log("FETCHING ORDERS FOR USER:", req.user.id);
   const { data, error } = await supabase
     .from("orders")
     .select("*")
     .eq("user_id", req.user.id)
     .order("created_at", { ascending: false });
 
-  if (error) return res.status(400).json({ error });
+  if (error) {
+    console.log("ORDER FETCH ERROR:", error);
+    return res.status(400).json({ error });
+  }
 
+  console.log("USER ORDERS:", data);
   res.json(data);
 });
 
