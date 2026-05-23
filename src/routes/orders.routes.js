@@ -128,15 +128,15 @@ router.get("/", requireAuth, async (req, res) => {
 //
 // UPDATE ORDER STATUS (admin only)
 //
-router.patch("/:id", requireAdmin, async (req, res) => {
-  const { status, delivery_status, tracking_number } = req.body;
+router.patch("/:id", requireAuth, async (req, res) => {
+  const { status, delivery_status, tracking_id, tracking_number } = req.body;
 
   const { data, error } = await supabase
     .from("orders")
     .update({
       status,
       delivery_status,
-      tracking_number,
+      tracking_id: tracking_id || tracking_number,
     })
     .eq("id", req.params.id)
     .select()
@@ -153,6 +153,7 @@ router.patch("/:id", requireAdmin, async (req, res) => {
     } else {
       const { sendOrderMail } = await import("../util/sendOrderMail.js");
 
+      // DEFAULT STATUS UPDATE EMAIL
       console.log("SENDING STATUS EMAIL TO:", data.email);
 
       await sendOrderMail({
@@ -161,6 +162,19 @@ router.patch("/:id", requireAdmin, async (req, res) => {
         status,
         tracking_number,
       });
+
+      // 🚚 SPECIAL EMAIL WHEN ORDER IS SHIPPED
+      if (status === "shipped") {
+        console.log("SENDING SHIPPING EMAIL (OUT FOR DELIVERY)");
+
+        await sendOrderMail({
+          type: "order_shipped",
+          order: data,
+          tracking_id: data.tracking_id || tracking_number,
+        });
+
+        console.log("SHIPPING EMAIL SENT SUCCESSFULLY");
+      }
 
       console.log("STATUS EMAIL SENT SUCCESSFULLY");
     }

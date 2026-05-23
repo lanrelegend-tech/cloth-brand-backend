@@ -49,6 +49,30 @@ export const sendOrderMail = async ({ type, order, status, tracking_number }) =>
       `;
     }
 
+    // 🚚 ORDER SHIPPED EMAIL (OUT FOR DELIVERY)
+    if (type === "order_shipped") {
+      subject = `Your order is out for delivery 🚚`;
+
+      html = `
+        <div style="font-family: Arial; padding: 20px;">
+          <h2>🚚 Your order is out for delivery!</h2>
+
+          <p>Good news ${order.name || "Customer"} 🎉</p>
+
+          <p>Your order is now on the way and will arrive soon.</p>
+
+          <h3>Tracking Details</h3>
+          <p><b>Order ID:</b> ${order.id}</p>
+          <p><b>Tracking ID:</b> ${tracking_number || "N/A"}</p>
+
+          <br/>
+          <p>We will notify you when it is delivered 📦</p>
+
+          <p>Thank you for shopping with us ❤️</p>
+        </div>
+      `;
+    }
+
     if (!subject || !html) {
       console.log("No valid email template type provided");
       return;
