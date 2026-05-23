@@ -43,22 +43,32 @@ router.post("/", requireAuth, async (req, res) => {
     ])
     .select();
 
+  console.log("ORDER CREATED:", data);
+
   if (error) return res.status(400).json({ error });
 
-  // 📧 SEND ORDER CONFIRMATION EMAIL (handled by sendOrderMail service)
+  // 📧 SEND ORDER CONFIRMATION EMAIL
   try {
     const order = data?.[0];
 
-    if (order) {
-      const { sendOrderMail } = await import("../services/sendOrderMail.js");
+    if (!order) {
+      console.log("EMAIL SKIPPED: no order returned from insert");
+    } else if (!order.email) {
+      console.log("EMAIL SKIPPED: order missing email", order);
+    } else {
+      const { sendOrderMail } = await import("../util/sendOrderMail.js");
+
+      console.log("SENDING ORDER EMAIL TO:", order.email);
 
       await sendOrderMail({
         type: "order_created",
         order,
       });
+
+      console.log("ORDER EMAIL SENT SUCCESSFULLY");
     }
   } catch (err) {
-    console.log("Order email failed:", err.message);
+    console.log("Order email failed:", err?.message || err);
   }
 
   res.json(data);
@@ -132,10 +142,16 @@ router.patch("/:id", requireAdmin, async (req, res) => {
 
   if (error) return res.status(400).json({ error });
 
-  // 📧 EMAIL NOTIFICATIONS (handled by sendOrderMail service)
+  // 📧 EMAIL NOTIFICATIONS
   try {
-    if (data) {
-      const { sendOrderMail } = await import("../services/sendOrderMail.js");
+    if (!data) {
+      console.log("STATUS EMAIL SKIPPED: no order data");
+    } else if (!data.email) {
+      console.log("STATUS EMAIL SKIPPED: missing email on order", data);
+    } else {
+      const { sendOrderMail } = await import("../util/sendOrderMail.js");
+
+      console.log("SENDING STATUS EMAIL TO:", data.email);
 
       await sendOrderMail({
         type: "order_status_update",
@@ -143,9 +159,11 @@ router.patch("/:id", requireAdmin, async (req, res) => {
         status,
         tracking_number,
       });
+
+      console.log("STATUS EMAIL SENT SUCCESSFULLY");
     }
   } catch (err) {
-    console.log("Email failed:", err.message);
+    console.log("Email failed:", err?.message || err);
   }
 
   res.json(data);

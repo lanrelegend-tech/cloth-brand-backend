@@ -29,13 +29,13 @@ export const requireAdmin = (req, res, next) => {
 
 export const requireAuth = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization || req.headers.Authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "No token provided" });
+    if (!authHeader || typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Token missing" });
     }
 
-    const token = authHeader.slice(7);
+    const token = authHeader.split(" ")[1];
 
     const decoded = verifyToken(token);
 
@@ -43,9 +43,14 @@ export const requireAuth = (req, res, next) => {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    if (!decoded.id) {
+      return res.status(401).json({ error: "Token payload missing user id" });
+    }
+
     req.user = decoded;
     next();
   } catch (err) {
+    console.error("AUTH ERROR:", err);
     return res.status(401).json({ error: "Auth failed" });
   }
 };
