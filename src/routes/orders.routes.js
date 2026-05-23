@@ -10,22 +10,35 @@ const router = express.Router();
 // CREATE ORDER (public)
 //
 router.post("/", requireAuth, async (req, res) => {
-  const { customer_name, email, items, total_price } = req.body;
-
-  const shipping_fee = calculateShipping(items);
+  const {
+    name,
+    email,
+    phone,
+    address,
+    items,
+    total,
+    shipping,
+    grandTotal,
+    payment_ref,
+    status,
+  } = req.body;
 
   const { data, error } = await supabase
     .from("orders")
     .insert([
       {
-        customer_name,
+        customer_name: name,
         email,
+        phone,
+        address,
         items,
-        total_price,
-        shipping_fee,
-        user_id: req.user?.id,
-        status: "pending",
+        total_price: total,
+        shipping_fee: shipping,
+        grand_total: grandTotal,
+        payment_ref,
+        status: status || "pending",
         delivery_status: "processing",
+        user_id: req.user?.id,
       },
     ])
     .select();
@@ -36,12 +49,13 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 //
-// GET ALL ORDERS (admin only)
+// GET LOGGED-IN USER ORDERS
 //
-router.get("/", requireAdmin, async (req, res) => {
+router.get("/my-orders", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("orders")
     .select("*")
+    .eq("user_id", req.user.id)
     .order("created_at", { ascending: false });
 
   if (error) return res.status(400).json({ error });
@@ -58,6 +72,20 @@ router.get("/:id", requireAdmin, async (req, res) => {
     .select("*")
     .eq("id", req.params.id)
     .single();
+
+  if (error) return res.status(400).json({ error });
+
+  res.json(data);
+});
+
+//
+// GET ALL ORDERS (admin only)
+//
+router.get("/", requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
 
   if (error) return res.status(400).json({ error });
 
@@ -119,21 +147,6 @@ router.patch("/:id", requireAdmin, async (req, res) => {
   } catch (err) {
     console.log("Email failed:", err.message);
   }
-
-  res.json(data);
-});
-
-//
-// GET LOGGED-IN USER ORDERS
-//
-router.get("/my-orders", requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("user_id", req.user.id)
-    .order("created_at", { ascending: false });
-
-  if (error) return res.status(400).json({ error });
 
   res.json(data);
 });

@@ -1,39 +1,51 @@
 import { verifyToken } from "../services/auth.service.js";
 
 export const requireAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  try {
+    const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
-    return res.status(401).json({ error: "No token provided" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const token = authHeader.slice(7);
+
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    if (decoded.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Auth failed" });
   }
-
-  const token = authHeader.split(" ")[1];
-
-  const decoded = verifyToken(token);
-
-  if (!decoded || decoded.role !== "admin") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
-  req.admin = decoded;
-  next();
 };
 
 export const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  try {
+    const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
-    return res.status(401).json({ error: "No token provided" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const token = authHeader.slice(7);
+
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Auth failed" });
   }
-
-  const token = authHeader.split(" ")[1];
-
-  const decoded = verifyToken(token);
-
-  if (!decoded) {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-
-  req.user = decoded;
-  next();
 };
