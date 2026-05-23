@@ -124,6 +124,27 @@ router.post("/", upload.array("images", 5), async (req, res) => {
 });
 
 //
+// UPLOAD SINGLE IMAGE
+//
+router.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const url = await uploadImage(req.file);
+
+    return res.json({
+      url,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+
+//
 // UPDATE PRODUCT
 //
 router.patch("/:id", async (req, res) => {
