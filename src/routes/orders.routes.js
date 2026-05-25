@@ -55,7 +55,7 @@ router.post("/", requireAuth, async (req, res) => {
     if (!order?.email) {
       console.log("EMAIL SKIPPED: missing email", order);
     } else {
-      const { sendOrderMail } = await import("../util/sendOrderMail.js");
+      const { sendOrderMail } = await import("../utils/sendOrderEmail.js");
 
       console.log("SENDING ORDER EMAIL TO:", order.email);
 
@@ -151,7 +151,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     } else if (!data.email) {
       console.log("STATUS EMAIL SKIPPED: missing email on order", data);
     } else {
-      const { sendOrderMail } = await import("../util/sendOrderMail.js");
+      const { sendOrderMail } = await import("../utils/sendOrderEmail.js");
 
       // DEFAULT STATUS UPDATE EMAIL
       console.log("SENDING STATUS EMAIL TO:", data.email);
@@ -160,7 +160,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
         type: "order_status_update",
         order: data,
         status,
-        tracking_number,
+        tracking_number: data.tracking_id || tracking_number,
       });
 
       // 🚚 SPECIAL EMAIL WHEN ORDER IS SHIPPED
@@ -170,7 +170,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
         await sendOrderMail({
           type: "order_shipped",
           order: data,
-          tracking_id: data.tracking_id || tracking_number,
+          tracking_number: data.tracking_id || tracking_number,
         });
 
         console.log("SHIPPING EMAIL SENT SUCCESSFULLY");
