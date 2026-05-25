@@ -13,7 +13,12 @@ export const loginAdmin = async (email, password) => {
   }
 
   const token = jwt.sign(
-    { role: "admin", email },
+    {
+      id: "admin",
+      role: "admin",
+      email,
+      name: "Admin",
+    },
     JWT_SECRET,
     { expiresIn: "7d" }
   );

@@ -8,7 +8,9 @@ const router = express.Router();
 // 📊 TOTAL STATS
 //
 router.get("/summary", requireAdmin, async (req, res) => {
-  const { data: orders } = await supabase.from("orders").select("*");
+  const { data: orders = [], error } = await supabase.from("orders").select("*");
+
+  if (error) return res.status(400).json({ error: error.message });
 
   const totalOrders = orders.length;
 
@@ -32,7 +34,9 @@ router.get("/summary", requireAdmin, async (req, res) => {
 // 🔥 TOP PRODUCTS (basic version)
 //
 router.get("/top-products", requireAdmin, async (req, res) => {
-  const { data: orders } = await supabase.from("orders").select("items");
+  const { data: orders = [], error } = await supabase.from("orders").select("items");
+
+  if (error) return res.status(400).json({ error: error.message });
 
   const productMap = {};
 

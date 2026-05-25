@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { sendWelcomeEmail } from "../utils/email.js";
+import { loginAdmin } from "../services/auth.service.js";
 
 const router = express.Router();
 
@@ -21,6 +22,20 @@ router.post("/login", async (req, res) => {
       .single();
 
     if (error || !user) {
+      const adminToken = await loginAdmin(email, password);
+
+      if (adminToken) {
+        return res.json({
+          token: adminToken,
+          user: {
+            id: "admin",
+            email,
+            role: "admin",
+            name: "Admin",
+          },
+        });
+      }
+
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -28,6 +43,20 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
+      const adminToken = await loginAdmin(email, password);
+
+      if (adminToken) {
+        return res.json({
+          token: adminToken,
+          user: {
+            id: "admin",
+            email,
+            role: "admin",
+            name: "Admin",
+          },
+        });
+      }
+
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -129,6 +158,15 @@ router.get("/me", requireAuth, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.user.role === "admin" && req.user.id === "admin") {
+      return res.json({
+        id: req.user.id,
+        email: req.user.email,
+        role: "admin",
+        name: req.user.name || "Admin",
+      });
     }
 
     // fetch full user from DB to include name
