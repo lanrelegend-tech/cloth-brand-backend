@@ -62,16 +62,25 @@ const getUploadedFiles = (req, fieldNames) => {
   return fieldNames.flatMap((fieldName) => req.files[fieldName] || []);
 };
 
-const buildProductPayload = (body, images = []) => ({
+const getProductImages = (body, uploadedImages = []) => {
+  if (uploadedImages.length > 0) return uploadedImages;
+
+  const images = parseListField(body.images);
+  if (images.length > 0) return images;
+
+  return body.image ? [body.image] : [];
+};
+
+const buildProductPayload = (body, uploadedImages = []) => ({
   name: body.name || "",
   description: body.description || "",
   price: Number(body.price || 0),
   category: body.category || "",
   sku: body.sku || "",
   stock: Number(body.stock || 0),
-  size: parseListField(body.size),
-  color: parseListField(body.color),
-  images,
+  size: parseListField(body.size || body.sizes),
+  color: parseListField(body.color || body.colors),
+  images: getProductImages(body, uploadedImages),
 });
 
 const buildProductUpdate = (body) => (
@@ -85,6 +94,11 @@ const buildProductUpdate = (body) => (
 
     if (field === "size" || field === "color") {
       payload[field] = parseListField(body[field]);
+      return payload;
+    }
+
+    if (field === "images") {
+      payload[field] = getProductImages(body);
       return payload;
     }
 
