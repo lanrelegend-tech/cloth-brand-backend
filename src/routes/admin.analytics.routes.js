@@ -4,6 +4,18 @@ import { requireAdmin } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
+const normalizeStatus = (status) => (status || "").toLowerCase();
+
+const getFulfillmentStatus = (order) => {
+  const deliveryStatus = normalizeStatus(order.delivery_status);
+  const paymentStatus = normalizeStatus(order.status);
+
+  if (["shipped", "delivered"].includes(deliveryStatus)) return deliveryStatus;
+  if (["shipped", "delivered"].includes(paymentStatus)) return paymentStatus;
+
+  return deliveryStatus || paymentStatus || "pending";
+};
+
 //
 // 📊 TOTAL STATS
 //
@@ -15,18 +27,30 @@ router.get("/summary", requireAdmin, async (req, res) => {
   const totalOrders = orders.length;
 
   const totalRevenue = orders
-    .filter(o => o.status === "paid")
-    .reduce((sum, o) => sum + (o.total_price || 0), 0);
+    .reduce((sum, o) => sum + Number(o.total || o.total_price || 0) + Number(o.shipping || 0), 0);
 
   const statusCount = orders.reduce((acc, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
     return acc;
   }, {});
 
+  const deliveryStatusCount = orders.reduce((acc, order) => {
+    const status = getFulfillmentStatus(order);
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const recentOrders = orders
+    .slice()
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 5);
+
   res.json({
     totalOrders,
     totalRevenue,
     statusCount,
+    deliveryStatusCount,
+    recentOrders,
   });
 });
 

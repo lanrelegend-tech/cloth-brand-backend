@@ -9,6 +9,17 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 const isUuid = (value) => UUID_PATTERN.test(value);
 
+const FULFILLMENT_STATUSES = new Set([
+  "pending",
+  "processing",
+  "not_shipped",
+  "shipped",
+  "delivered",
+]);
+
+const normalizeStatus = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
 const getAllOrders = async (req, res) => {
   const { data, error } = await supabase
     .from("orders")
@@ -150,14 +161,36 @@ router.patch("/:id", requireAdmin, async (req, res) => {
   }
 
   const { status, delivery_status, tracking_id, tracking_number } = req.body;
+  const requestedStatus = normalizeStatus(status);
+  const requestedDeliveryStatus = normalizeStatus(delivery_status);
+  const fulfillmentStatus =
+    requestedDeliveryStatus ||
+    (FULFILLMENT_STATUSES.has(requestedStatus) ? requestedStatus : "");
+  const trackingId = String(tracking_id || tracking_number || "").trim();
+
+  if (!status && !delivery_status && !trackingId) {
+    return res.status(400).json({ error: "No order update fields provided" });
+  }
+
+  if (fulfillmentStatus && !FULFILLMENT_STATUSES.has(fulfillmentStatus)) {
+    return res.status(400).json({ error: "Invalid delivery status" });
+  }
+
+  if (fulfillmentStatus === "shipped" && !trackingId) {
+    return res.status(400).json({
+      error: "Tracking ID is required before marking an order as shipped",
+    });
+  }
+
+  const updatePayload = {};
+
+  if (requestedStatus) updatePayload.status = requestedStatus;
+  if (fulfillmentStatus) updatePayload.delivery_status = fulfillmentStatus;
+  if (trackingId) updatePayload.tracking_id = trackingId;
 
   const { data, error } = await supabase
     .from("orders")
-    .update({
-      status,
-      delivery_status,
-      tracking_id: tracking_id || tracking_number,
-    })
+    .update(updatePayload)
     .eq("id", req.params.id)
     .select()
     .single();
@@ -179,18 +212,18 @@ router.patch("/:id", requireAdmin, async (req, res) => {
       await sendOrderMail({
         type: "order_status_update",
         order: data,
-        status,
-        tracking_number: data.tracking_id || tracking_number,
+        status: fulfillmentStatus || requestedStatus || data.delivery_status || data.status,
+        tracking_number: data.tracking_id || trackingId,
       });
 
       // 🚚 SPECIAL EMAIL WHEN ORDER IS SHIPPED
-      if (status === "shipped") {
+      if (fulfillmentStatus === "shipped") {
         console.log("SENDING SHIPPING EMAIL (OUT FOR DELIVERY)");
 
         await sendOrderMail({
           type: "order_shipped",
           order: data,
-          tracking_number: data.tracking_id || tracking_number,
+          tracking_number: data.tracking_id || trackingId,
         });
 
         console.log("SHIPPING EMAIL SENT SUCCESSFULLY");
@@ -202,7 +235,10 @@ router.patch("/:id", requireAdmin, async (req, res) => {
     console.log("Email failed:", err?.message || err);
   }
 
-  res.json(data);
+  res.json({
+    ...data,
+    tracking_number: data.tracking_id,
+  });
 });
 
 export default router;
