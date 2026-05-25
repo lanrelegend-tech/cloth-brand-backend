@@ -5,6 +5,21 @@ import { calculateShipping } from "../services/shipping.service.js";
 
 const router = express.Router();
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value) => UUID_PATTERN.test(value);
+
+const getAllOrders = async (req, res) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return res.status(400).json({ error });
+
+  res.json(data);
+};
+
 //
 // CREATE ORDER (public)
 //
@@ -97,9 +112,24 @@ router.get("/my", requireAuth, async (req, res) => {
 });
 
 //
+// GET ALL ORDERS (admin only)
+//
+router.get("/", requireAdmin, getAllOrders);
+
+//
+// Backwards-compatible alias for frontends that already include /orders
+// in their API base URL and request /orders again.
+//
+router.get("/orders", requireAdmin, getAllOrders);
+
+//
 // GET SINGLE ORDER (admin only)
 //
 router.get("/:id", requireAdmin, async (req, res) => {
+  if (!isUuid(req.params.id)) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
   const { data, error } = await supabase
     .from("orders")
     .select("*")
@@ -112,23 +142,13 @@ router.get("/:id", requireAdmin, async (req, res) => {
 });
 
 //
-// GET ALL ORDERS (auth only)
-//
-router.get("/", requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) return res.status(400).json({ error });
-
-  res.json(data);
-});
-
-//
 // UPDATE ORDER STATUS (admin only)
 //
-router.patch("/:id", requireAuth, async (req, res) => {
+router.patch("/:id", requireAdmin, async (req, res) => {
+  if (!isUuid(req.params.id)) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
   const { status, delivery_status, tracking_id, tracking_number } = req.body;
 
   const { data, error } = await supabase

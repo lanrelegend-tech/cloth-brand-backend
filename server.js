@@ -43,7 +43,6 @@ app.use(express.json());
 app.use(morgan("dev"));
 console.log("👉 Mounting /products route...");
 app.use("/products", productsRoutes);
-app.use("/", productsRoutes);
 app.use("/auth", authRoutes);
 app.use("/orders", ordersRoutes);
 app.use("/payments", paymentsRoutes);
@@ -62,6 +61,9 @@ app.get("/ping", (req, res) => {
     ok: true
   });
 });
+
+// Keep legacy product URLs available without letting them intercept API routes.
+app.use("/", productsRoutes);
 
 console.log("🚀 Server starting...");
 app.listen(PORT, () => {
