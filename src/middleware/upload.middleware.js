@@ -2,7 +2,9 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 
-const uploadPath = "/tmp/uploads";
+const uploadPath = process.env.NODE_ENV === "production"
+  ? "/tmp/uploads"
+  : path.join(process.cwd(), "uploads");
 
 // create temp folder (Render-safe)
 if (!fs.existsSync(uploadPath)) {

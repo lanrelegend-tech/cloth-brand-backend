@@ -44,6 +44,24 @@ const formatSupabaseError = (error) => ({
   details: error?.details,
 });
 
+const handleUpload = (middleware) => (req, res, next) => {
+  middleware(req, res, (err) => {
+    if (!err) return next();
+
+    const isMulterError = err.name === "MulterError";
+    return res.status(isMulterError ? 400 : 500).json({
+      error: isMulterError ? err.message : "Upload failed",
+    });
+  });
+};
+
+const getUploadedFiles = (req, fieldNames) => {
+  if (Array.isArray(req.files)) return req.files;
+  if (!req.files) return [];
+
+  return fieldNames.flatMap((fieldName) => req.files[fieldName] || []);
+};
+
 const buildProductPayload = (body, images = []) => ({
   name: body.name || "",
   description: body.description || "",
@@ -109,54 +127,72 @@ router.get("/:id", async (req, res) => {
 //
 // CREATE PRODUCT
 //
-router.post("/", upload.array("images", 5), async (req, res) => {
-  try {
-    const imageUrls = [];
+router.post(
+  "/",
+  handleUpload(upload.fields([
+    { name: "images", maxCount: 5 },
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ])),
+  async (req, res) => {
+    try {
+      const imageUrls = [];
+      const files = getUploadedFiles(req, ["images", "image", "file"]);
 
-    if (req.files?.length > 0) {
-      for (const file of req.files) {
-        imageUrls.push(getPublicUploadUrl(req, file.filename));
+      if (files.length > 0) {
+        for (const file of files) {
+          imageUrls.push(getPublicUploadUrl(req, file.filename));
+        }
       }
+
+      const productData = buildProductPayload(req.body, imageUrls);
+
+      if (!productData.name || !productData.price) {
+        return res.status(400).json({
+          error: "name and price are required",
+        });
+      }
+
+      const { data, error } = await supabase
+        .from("products")
+        .insert([productData])
+        .select();
+
+      if (error) return res.status(400).json(formatSupabaseError(error));
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    const productData = buildProductPayload(req.body, imageUrls);
-
-    if (!productData.name || !productData.price) {
-      return res.status(400).json({
-        error: "name and price are required",
-      });
-    }
-
-    const { data, error } = await supabase
-      .from("products")
-      .insert([productData])
-      .select();
-
-    if (error) return res.status(400).json(formatSupabaseError(error));
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
 //
 // UPLOAD SINGLE IMAGE
 //
-router.post("/upload", upload.single("image"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+router.post(
+  "/upload",
+  handleUpload(upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ])),
+  async (req, res) => {
+    const [file] = getUploadedFiles(req, ["image", "file"]);
 
-  try {
-    return res.json({
-      url: getPublicUploadUrl(req, req.file.filename),
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Upload failed" });
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    try {
+      return res.json({
+        url: getPublicUploadUrl(req, file.filename),
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Upload failed" });
+    }
   }
-});
+);
 
 //
 // UPDATE PRODUCT
